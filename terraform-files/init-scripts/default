@@ -1,0 +1,16 @@
+upstream netproject_api_servers {
+  server app.group2.cyber:8080 ;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_pass http://netproject_api_servers;
+    }
+
+    ssl_certificate /home/ubuntu/certs/cert.pem;
+    ssl_certificate_key /home/ubuntu/certs/key.pem;
+}

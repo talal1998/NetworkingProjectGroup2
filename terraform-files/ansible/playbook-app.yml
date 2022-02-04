@@ -1,0 +1,60 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Updating the apt
+      apt: update_cache=yes
+
+    - name: Install aptitude
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+    - name: Install All Required Packages
+      apt: name={{ item }} state=latest update_cache=yes force_apt_get=yes
+      loop: [ 'apt-transport-https' , 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools' ] # Packages to install
+
+    - name: Add a GPG Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable #focal stable is the version
+        state: present
+
+    - name: Updating the apt_key # If the repo is changed, you must update the apt
+      apt: update_cache=yes
+
+    - name: Install All Required Packages
+      apt: name={{ item }} state=latest update_cache=yes force_apt_get=yes
+      loop: [ 'docker-ce', 'docker-ce-cli', 'containerd.io' ]
+
+    - name: Installing Python Packages for Docker
+      pip: #Pip = Python command to install
+        name: docker
+
+    - name: Adding the current user to docker group to allow docker running without sudo
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes # essentially: sudo usermod -a -G docker ubuntu
+
+#    - name: Copy a File to the destination
+#      copy:
+#        src: "{{ playbook_dir }}/../init-scripts/sakila-app.sh" # {{playbook_dir}} means we start where the playbook is
+#        dest: /home/ubuntu
+#        owner: ubuntu
+#        group: ubuntu
+#        mode: 0744
+
+    - name: Run App Container
+      docker_container:
+        name: items_api # Basically, giving the image a variable name
+        image: konrad2020/items_api:latest # The actual image name
+        state: started
+        container_default_behavior: compatibility
+        ports:
+          - "8080:8080"
+        volumes:
+          - "{{ playbook_dir }}/../init-scripts/application.properties:/application.properties"
